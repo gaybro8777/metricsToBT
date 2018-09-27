@@ -1,0 +1,5 @@
+# source: https://cloud.google.com/appengine/docs/standard/nodejs/scheduling-jobs-with-cron-yaml
+cron:
+- description: "pull metrics and write to BT"
+  url: /metric
+  schedule: every 5 minutes
