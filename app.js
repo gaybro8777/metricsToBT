@@ -17,7 +17,6 @@ const express       =   require('express');
 const app           =   express();
 //specify GCP Project ID
 const projectId     =   'stackdriver-kubernetes'; //TODO - modify to take environment variable specified in app.yaml
-const metricValue   =   0;
 //TODO - make this take inputs 
 // sets up the things we want to fetch
 const instanceName  =   'mysql-centos';
