@@ -15,12 +15,12 @@
 
 const express       =   require('express');
 const app           =   express();
-//specify GCP Project ID
+
 const projectId     =   'stackdriver-kubernetes'; //TODO - modify to take environment variable specified in app.yaml
-//TODO - make this take inputs 
+//TODO - make this take inputs
 // sets up the things we want to fetch
 const instanceName  =   'mysql-centos';
-const metricType    =   'metric.type="compute.googleapis.com/instance/cpu/utilization"'; 
+const metricType    =   'metric.type="compute.googleapis.com/instance/cpu/utilization"';
 const myFilter      =   metricType + ' AND ' + 'metric.label.instance_name = ' + instanceName;
 var metricValues    =   new Array();
 var metricTimeStamps=   new Array();
