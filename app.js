@@ -26,68 +26,22 @@ const myFilter      =   metricType + ' AND ' + 'metric.label.instance_name = ' +
 var metricValues    =   new Array();
 var metricTimeStamps=   new Array();
 
-//set up BigTable
-// Imports the Google Cloud client library
-const Bigtable      =   require('@google-cloud/bigtable');
 // The name of the Cloud Bigtable instance
 const INSTANCE_NAME =   'metrics';
 // The name of the Cloud Bigtable table
 const TABLE_NAME    =   'cpu';
-const bigtableOptions = {
-  projectId: projectId,
-};
-const column1       =   'timestamp';
-const column2       =   'value';
+const column1       =   'values';
 
 //functions
 const readF         =   require('./readTimeSeriesData.js');
-
-
-// function to make sure BT table exists
-// TODO - move this into separate file
-async function checkAndCreateTable(instanceID, tableID) {
-  const bigtable = Bigtable(bigtableOptions);
-  const instance = bigtable.instance(instanceID);
-  const table = instance.table(tableID);
-
-  // Check if table exists
-  console.log();
-  console.log('Checking if table exists...');
-  let tableExists;
-  try {
-    [tableExists] = await table.exists();
-  } catch (err) {
-    console.error(`Error checking if table exists:`, err);
-    return;
-  }
-
-  if (!tableExists) {
-    try {
-      // Create table if does not exist
-      console.log(`Table does not exist. Creating table ${tableID}`);
-      // Creating table
-      await table.create();
-    } catch (err) {
-      console.error(`Error creating table:`, err);
-      return;
-    }
-  } else {
-    console.log(`Table exists.`);
-  }
-} // end table exists
-
-// function to make sure columns exist
-// TODO - move this to separate file
-async function checkAndCreateColumns(funColumn1, funColumn2) {
-  return true;
-}
+const BT            =   require('./cloudBigTable.js');
 
 // function to write values to Cloud BigTable
-// TODO - move this to separate file
 function writeValues() {
   console.log('writing to BigTable');
-  checkAndCreateTable(INSTANCE_NAME, TABLE_NAME);
-  checkAndCreateColumns(column1, column2);
+  BT.checkAndCreateTable(projectId, INSTANCE_NAME, TABLE_NAME);
+  BT.checkAndCreateColumn(projectId, INSTANCE_NAME, TABLE_NAME, column1);
+  BT.writeValues();
   return true;
 }
 // handle root request
