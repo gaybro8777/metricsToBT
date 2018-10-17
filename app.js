@@ -15,57 +15,81 @@
 
 const express       =   require('express');
 const app           =   express();
-// Imports the Google Cloud client library
-const monitoring    =   require('@google-cloud/monitoring');
-// Creates a client
-const client        =   new monitoring.MetricServiceClient();
 //specify GCP Project ID
-const projectId     = 'stackdriver-kubernetes'; //TODO - modify to take environment variable specified in app.yaml
-const metricValue   = 0;
+const projectId     =   'stackdriver-kubernetes'; //TODO - modify to take environment variable specified in app.yaml
+const metricValue   =   0;
 //TODO - make this take inputs 
-const metricType    = 'metric.type="compute.googleapis.com/instance/cpu/utilization"'; 
-const resourceName  = '';
+// sets up the things we want to fetch
+const instanceName  =   'mysql-centos';
+const metricType    =   'metric.type="compute.googleapis.com/instance/cpu/utilization"'; 
+const myFilter      =   metricType + ' AND ' + 'metric.label.instance_name = ' + instanceName;
+var metricValues    =   new Array();
+var metricTimeStamps=   new Array();
 
-// function to read metric from monitoring API
-// original - https://github.com/googleapis/nodejs-monitoring/blob/master/samples/metrics.js
+//set up BigTable
+// Imports the Google Cloud client library
+const Bigtable      =   require('@google-cloud/bigtable');
+// The name of the Cloud Bigtable instance
+const INSTANCE_NAME =   'metrics';
+// The name of the Cloud Bigtable table
+const TABLE_NAME    =   'cpu';
+const bigtableOptions = {
+  projectId: projectId,
+};
+const column1       =   'timestamp';
+const column2       =   'value';
 
-function readTimeSeriesData(projectId, metricType) {
+//functions
+const readF         =   require('./readTimeSeriesData.js');
 
-    const request = {
-      name: client.projectPath(projectId),
-      //TOD - combine multiple inputs to get the right metric against the right resource
-      filter: metricType,
-      interval: {
-        startTime: {
-          // Limit results to the last 20 minutes
-          seconds: Date.now() / 1000 - 60 * 20,
-        },
-        endTime: {
-          seconds: Date.now() / 1000,
-        },
-      },
-    };
-  
-    // Writes time series data
-    client
-      .listTimeSeries(request)
-      .then(results => {
-        const timeSeries = results[0];
-        //TODO - pick the target we're after instead of listing all?
-        timeSeries.forEach(data => {
-          console.log(`${data.metric.labels.instance_name}:`);
-          data.points.forEach(point => {
-            console.log(JSON.stringify(point.value));
-            console.log(JSON.stringify(point.d))
-            //TODO - write to BigTable
-          });
-        });
-      })
-      .catch(err => {
-        console.error('ERROR:', err);
-      });
+
+// function to make sure BT table exists
+// TODO - move this into separate file
+async function checkAndCreateTable(instanceID, tableID) {
+  const bigtable = Bigtable(bigtableOptions);
+  const instance = bigtable.instance(instanceID);
+  const table = instance.table(tableID);
+
+  // Check if table exists
+  console.log();
+  console.log('Checking if table exists...');
+  let tableExists;
+  try {
+    [tableExists] = await table.exists();
+  } catch (err) {
+    console.error(`Error checking if table exists:`, err);
+    return;
   }
 
+  if (!tableExists) {
+    try {
+      // Create table if does not exist
+      console.log(`Table does not exist. Creating table ${tableID}`);
+      // Creating table
+      await table.create();
+    } catch (err) {
+      console.error(`Error creating table:`, err);
+      return;
+    }
+  } else {
+    console.log(`Table exists.`);
+  }
+} // end table exists
+
+// function to make sure columns exist
+// TODO - move this to separate file
+async function checkAndCreateColumns(funColumn1, funColumn2) {
+  return true;
+}
+
+// function to write values to Cloud BigTable
+// TODO - move this to separate file
+function writeValues() {
+  console.log('writing to BigTable');
+  checkAndCreateTable(INSTANCE_NAME, TABLE_NAME);
+  checkAndCreateColumns(column1, column2);
+  return true;
+}
 // handle root request
 app.get('/', (req, res) => {
     console.log(req.url);
@@ -75,8 +99,7 @@ app.get('/', (req, res) => {
 // handle metric request
 app.get('/metric', (req, res) => {
     console.log('fetching metric');
-    readTimeSeriesData(projectId, metricType)
-    res.status(200).send('Metric value is ' + metricValue).end();
+    res.status(200).send('Metric value was fetched: ' + readF.readTimeSeriesData(projectId, myFilter, metricTimeStamps, metricValues) + ' metric value was written: ' + writeValues()).end();
 });
 
 // Start the server
