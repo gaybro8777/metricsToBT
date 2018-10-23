@@ -26,13 +26,15 @@ module.exports = {
         const timeSeries = results[0];
         timeSeries.forEach(data => {
           console.log(`${data.metric.labels.instance_name}:`);
+          console.log('got ' + data.points.length + 'points');
           data.points.forEach(point => {
             timeArray.push(JSON.parse(point.interval.startTime.seconds));
-            valuesArray.push(JSON.stringify(point.value.doubleValue))
-            console.log('data point: ');
             console.log('timestamp: ' + JSON.parse(point.interval.startTime.seconds));
-            console.log('value: ' + JSON.stringify(point.value.doubleValue));
+            valuesArray.push(JSON.stringify(point.value.doubleValue));
+            console.log('value: ' + JSON.stringify(point.value.doubleValue));            
           });
+          console.log('there are ' + timeArray.length + ' time stamps');
+          console.log('there are ' + valuesArray.length + ' values');
         });
       })
       .catch(err => {

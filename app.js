@@ -16,7 +16,8 @@
 const express       =   require('express');
 const app           =   express();
 
-const projectId     =   'stackdriver-kubernetes'; //TODO - modify to take environment variable specified in app.yaml
+const projectId     =   'stackdriver-kubernetes';
+//TODO - modify to take environment variable specified in app.yaml
 //TODO - make this take inputs
 // sets up the things we want to fetch
 const instanceName  =   'mysql-centos';
@@ -29,20 +30,13 @@ var metricTimeStamps=   new Array();
 const INSTANCE_NAME =   'metrics';
 // The name of the Cloud Bigtable table
 const TABLE_NAME    =   'cpu';
-const column1       =   'values';
+// the name of the column family
+const COLUMN_NAME   =   'values';
 
 //functions
-const readF         =   require('./readTimeSeriesData.js');
+const readF         =   require('./monitoringAPI.js');
 const BT            =   require('./cloudBigTable.js');
 
-// function to write values to Cloud BigTable
-function writeValues() {
-  console.log('writing to BigTable');
-  BT.checkAndCreateTable(projectId, INSTANCE_NAME, TABLE_NAME);
-  BT.checkAndCreateColumn(projectId, INSTANCE_NAME, TABLE_NAME, column1);
-  BT.writeValues();
-  return true;
-}
 // handle root request
 app.get('/', (req, res) => {
     console.log(req.url);
@@ -52,7 +46,9 @@ app.get('/', (req, res) => {
 // handle metric request
 app.get('/metric', (req, res) => {
     console.log('fetching metric');
-    res.status(200).send('Metric value was fetched: ' + readF.readTimeSeriesData(projectId, myFilter, metricTimeStamps, metricValues) + ' metric value was written: ' + writeValues()).end();
+    readF.readTimeSeriesData(projectId, myFilter, metricTimeStamps, metricValues);
+    BT.writeValues(metricValues);
+    res.status(200).send('fetching metric and writing it: '); //end status send
 });
 
 // Start the server
@@ -60,4 +56,10 @@ const PORT = process.env.PORT || 8080;
 app.listen(PORT, () => {
   console.log(`App listening on port ${PORT}`);
   console.log('Press Ctrl+C to quit.');
+  // create the BT table
+  console.log('checking and creating table');
+  BT.checkAndCreateTable(projectId, INSTANCE_NAME, TABLE_NAME);
+  // create the column
+  console.log('checking and creating column');
+  BT.checkAndCreateColumn(projectId, INSTANCE_NAME, TABLE_NAME, COLUMN_NAME);
 });

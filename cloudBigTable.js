@@ -48,12 +48,47 @@ module.exports  = {
         const bigtable = Bigtable(bigtableOptions);
         const instance = bigtable.instance(instanceID);
         const table = instance.table(tableID);
-        const column = table.column(columnName);
+        // const column = table.column(columnName);
+        
+        // Define the GC rule to retain data with max age of 5 days
+        const maxAgeRule = {
+            rule: {
+            age: {
+                // Value must be atleast 1 millisecond
+                seconds: 60 * 60 * 24 * 5,
+                nanos: 0,
+            },
+            },
+        };
+        try {
+            const [family, apiResponse] = await table.createFamily(columnName, maxAgeRule);
+            console.log(`Created column family ${family.id}`);
+        } catch (err) {
+            console.error(`Error creating column family:`, err);
+            return;
+        }
+        // [END bigtable_create_family_gc_max_age]
+
         return true;
     }, // end column check and create
 
     // write values
-    writeValues: async function() {
+    writeValues: function(values, column) {
+        // [START writing_rows]
+        console.log('writing ' + values.length + 'values');
+        for (var i = 0; i<values.length; i++) {
+            console.log('writing ' + i + 'th value');
+            const rowsToInsert = {
+                key: new Date(),
+                data: {
+                    [column]: {
+                        value: values[i]
+                    }
+                }
+            }
+            console.log('writing value: ' + i + ': ' + rowsToInsert);
+            table.insert(rowsToInsert);
+        }
         return true;
     } // end write values
 
