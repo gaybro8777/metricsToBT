@@ -1,5 +1,6 @@
 // functions necessary to interact with BigTable
 
+
 module.exports  = {
     checkAndCreateTable: async function (projectID, instanceID, tableID) {
     
@@ -17,7 +18,7 @@ module.exports  = {
         console.log('Checking if table exists...');
         let tableExists;
         try {
-        [tableExists] = await table.exists();
+            [tableExists] = await table.exists();
         } catch (err) {
         console.error(`Error checking if table exists:`, err);
         return;
@@ -73,23 +74,36 @@ module.exports  = {
     }, // end column check and create
 
     // write values
-    writeValues: function(values, column) {
-        // [START writing_rows]
-        console.log('writing ' + values.length + 'values');
-        for (var i = 0; i<values.length; i++) {
-            console.log('writing ' + i + 'th value');
-            const rowsToInsert = {
-                key: new Date(),
-                data: {
-                    [column]: {
-                        value: values[i]
-                    }
+    writeValues: function(projectID, instanceID, tableID, columnID, value) {
+        const Bigtable      =   require('@google-cloud/bigtable');
+        const bigtableOptions = {
+            projectId: projectID,
+            };
+        const bigtable = Bigtable(bigtableOptions);
+        const instance = bigtable.instance(instanceID);
+        console.log ('writing to instance: ' + instance);
+        const table = instance.table(tableID);
+        console.log ('writing to table: ' + table);
+
+        console.log('entering write function');
+        const rowsToInsert = {
+            key: new Date(),
+            data: {
+                [columnID]: {
+                    value: value
                 }
             }
-            console.log('writing value: ' + i + ': ' + rowsToInsert);
-            table.insert(rowsToInsert);
-        }
-        return true;
+        };
+        console.log('writing value: ' + rowsToInsert);
+        try {
+            console.log (' trying to write');
+            // const wasWritten = await table.insert(rowsToInsert);
+            return true;
+        } catch(err) {
+            console.log('error writing: ' + err);
+            return false;
+        } 
+    
     } // end write values
 
 }; //end module

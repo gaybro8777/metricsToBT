@@ -22,9 +22,22 @@ const projectId     =   'stackdriver-kubernetes';
 // sets up the things we want to fetch
 const instanceName  =   'mysql-centos';
 const metricType    =   'metric.type="compute.googleapis.com/instance/cpu/utilization"';
-const myFilter      =   metricType + ' AND ' + 'metric.label.instance_name = ' + instanceName;
-var metricValues    =   new Array();
-var metricTimeStamps=   new Array();
+var myFilter        =   metricType + ' AND ' + 'metric.label.instance_name = ' + instanceName;
+const monitoring    =   require('@google-cloud/monitoring');
+const client        =   new monitoring.MetricServiceClient();
+const request = {
+  name:       client.projectPath(projectId),
+  filter:     myFilter,
+  interval: {
+    startTime: {
+      // Limit results to the last 5 minutes
+      seconds: Date.now() / 1000 - 60 * 5,
+    },
+    endTime: {
+      seconds: Date.now() / 1000,
+    },
+  },
+};
 
 // The name of the Cloud Bigtable instance
 const INSTANCE_NAME =   'metrics';
@@ -32,10 +45,8 @@ const INSTANCE_NAME =   'metrics';
 const TABLE_NAME    =   'cpu';
 // the name of the column family
 const COLUMN_NAME   =   'values';
+const BT = require('./cloudBigTable.js');
 
-//functions
-const readF         =   require('./monitoringAPI.js');
-const BT            =   require('./cloudBigTable.js');
 
 // handle root request
 app.get('/', (req, res) => {
@@ -45,11 +56,25 @@ app.get('/', (req, res) => {
 
 // handle metric request
 app.get('/metric', (req, res) => {
-    console.log('fetching metric');
-    readF.readTimeSeriesData(projectId, myFilter, metricTimeStamps, metricValues);
-    BT.writeValues(metricValues);
-    res.status(200).send('fetching metric and writing it: '); //end status send
-});
+  console.log('/metric requested');
+  client
+    .listTimeSeries(request)
+    .then(results => {
+      var timeSeries = results[0];
+      timeSeries.forEach(data => {
+        console.log(`instance name is: ${data.metric.labels.instance_name}`);
+        console.log('got ' + data.points.length + ' data points');
+        data.points.forEach(point => {
+          const timestamp = JSON.parse(point.interval.startTime.seconds);
+          const metricValue = JSON.stringify(point.value.doubleValue);
+          console.log('timestamp: ' + JSON.parse(point.interval.startTime.seconds));
+          console.log('value: ' + JSON.stringify(point.value.doubleValue));  
+          BT.writeValues(projectId, INSTANCE_NAME, TABLE_NAME, COLUMN_NAME, metricValue);  
+        }); //data.points.foreach      
+      }); //timeseries.foreach
+    }); // then
+    res.status(200).send('Done');
+  });
 
 // Start the server
 const PORT = process.env.PORT || 8080;
